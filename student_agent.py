@@ -248,7 +248,7 @@ approximator = None
 def get_action(state, score):
     global approximator
     if approximator is None:
-        episode = 50000
+        episode = 40000
         approximator = load_approximator(f"checkpoint_ep{episode}.pkl")
     
     env = Game2048Env()
