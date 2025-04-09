@@ -8,7 +8,19 @@ import matplotlib.pyplot as plt
 import copy
 import random
 import math
+from util import load_approximator
 
+COLOR_MAP = {
+    0: "#cdc1b4", 2: "#eee4da", 4: "#ede0c8", 8: "#f2b179",
+    16: "#f59563", 32: "#f67c5f", 64: "#f65e3b", 128: "#edcf72",
+    256: "#edcc61", 512: "#edc850", 1024: "#edc53f", 2048: "#edc22e",
+    4096: "#3c3a32", 8192: "#3c3a32", 16384: "#3c3a32", 32768: "#3c3a32"
+}
+TEXT_COLOR = {
+    2: "#776e65", 4: "#776e65", 8: "#f9f6f2", 16: "#f9f6f2",
+    32: "#f9f6f2", 64: "#f9f6f2", 128: "#f9f6f2", 256: "#f9f6f2",
+    512: "#f9f6f2", 1024: "#f9f6f2", 2048: "#f9f6f2", 4096: "#f9f6f2"
+}
 
 class Game2048Env(gym.Env):
     def __init__(self):
@@ -133,7 +145,6 @@ class Game2048Env(gym.Env):
         return True
 
     def step(self, action):
-        """Execute one action"""
         assert self.action_space.contains(action), "Invalid action"
 
         if action == 0:
@@ -147,14 +158,14 @@ class Game2048Env(gym.Env):
         else:
             moved = False
 
-        self.last_move_valid = moved  # Record if the move was valid
-
+        self.last_move_valid = moved
+        previous_board = copy.deepcopy(self.board)
         if moved:
             self.add_random_tile()
 
         done = self.is_game_over()
 
-        return self.board, self.score, done, {}
+        return self.board, self.score, done, previous_board 
 
     def render(self, mode="human", action=None):
         """
@@ -231,9 +242,30 @@ class Game2048Env(gym.Env):
         # If the simulated board is different from the current board, the move is legal
         return not np.array_equal(self.board, temp_board)
 
+
+approximator = None
+
 def get_action(state, score):
+    global approximator
+    if approximator is None:
+        episode = 50000
+        approximator = load_approximator(f"checkpoint_ep{episode}.pkl")
+    
     env = Game2048Env()
-    return random.choice([0, 1, 2, 3]) # Choose a random action
+    env.board = copy.deepcopy(state)
+    legal_moves = [a for a in range(4) if env.is_move_legal(a)]
+    best_action = None
+    best_value = -float('inf')
+    
+    for action in legal_moves:
+        env_copy = copy.deepcopy(env)
+        _,next_score,_,board = env_copy.step(action)
+        value = (next_score-score) + approximator.value(board)
+        if value > best_value:
+            best_action = action
+            best_value  = value
+    
+    return best_action
     
     # You can submit this random agent to evaluate the performance of a purely random strategy.
 
