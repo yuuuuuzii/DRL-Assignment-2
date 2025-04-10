@@ -30,7 +30,7 @@ jobs:
     - name: 2.5. Download model/checkpoint from Google Drive
       run: |
         pip install gdown
-        gdown --fuzzy 'https://drive.google.com/file/d/1d8p8yvrGIzVmwE8mP0B9QEyc4jTqw-mi/view?usp=share_link'
+        gdown --fuzzy 'https://drive.google.com/file/d/1wDz-Z_BJRLUgJneIWUUH9UkvS1Px-GEP/view?usp=share_link'
     - name: 3. Ensure env.so is executable
       run: chmod +x env.cpython-38-x86_64-linux-gnu.so
 
