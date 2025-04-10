@@ -255,7 +255,7 @@ def get_action(state, score):
         episode = 25000
         approximator = load_approximator(f"checkpoint_ep{episode}.pkl")
 
-    td_mcts = TD_MCTS(env, approximator, iterations=50, exploration_constant=8.41, rollout_depth=10, gamma=0.99)
+    td_mcts = TD_MCTS(env, approximator, iterations=60, exploration_constant=8.41, rollout_depth=10, gamma=0.99)
     root = TD_MCTS_Node(env, state, score)
     for _ in range(td_mcts.iterations):
         td_mcts.run_simulation(root)
