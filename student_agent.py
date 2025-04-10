@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import copy
 import random
 import math
-from util import load_approximator
+from util import TD_MCTS, TD_MCTS_Node, load_approximator
 
 COLOR_MAP = {
     0: "#cdc1b4", 2: "#eee4da", 4: "#ede0c8", 8: "#f2b179",
@@ -160,12 +160,13 @@ class Game2048Env(gym.Env):
 
         self.last_move_valid = moved
         previous_board = copy.deepcopy(self.board)
+        
         if moved:
             self.add_random_tile()
 
         done = self.is_game_over()
 
-        return self.board, self.score, done, previous_board 
+        return self.board, self.score, done, previous_board
 
     def render(self, mode="human", action=None):
         """
@@ -246,27 +247,42 @@ class Game2048Env(gym.Env):
 approximator = None
 
 def get_action(state, score):
-    global approximator
-    if approximator is None:
-        episode = 40000
-        approximator = load_approximator(f"checkpoint_ep{episode}.pkl")
-    
     env = Game2048Env()
     env.board = copy.deepcopy(state)
-    legal_moves = [a for a in range(4) if env.is_move_legal(a)]
-    best_action = None
-    best_value = -float('inf')
+
+    global approximator
+    if approximator is None:
+        episode = 25000
+        approximator = load_approximator(f"checkpoint_ep{episode}.pkl")
+
+    td_mcts = TD_MCTS(env, approximator, iterations=50, exploration_constant=8.41, rollout_depth=10, gamma=0.99)
+    root = TD_MCTS_Node(env, state, score)
+    for _ in range(td_mcts.iterations):
+        td_mcts.run_simulation(root)
+
+    best_act, _ = td_mcts.best_action_distribution(root)
     
-    for action in legal_moves:
-        env_copy = copy.deepcopy(env)
-        _,next_score,_,board = env_copy.step(action)
-        value = (next_score-score) + approximator.value(board)
-        if value > best_value:
-            best_action = action
-            best_value  = value
+    return best_act
     
-    return best_action
-    
-    # You can submit this random agent to evaluate the performance of a purely random strategy.
 
 
+env = Game2048Env()
+
+state = env.reset()
+env.render()
+
+done = False
+round = 0
+while not done:
+    # Create the root node from the current state
+
+    best_act = get_action(state, env.score)
+    
+    state, reward, done, _ = env.step(best_act)
+    round += 1
+
+    if(round % 100 == 0):
+        print(f"reward: at {round} is {reward}")
+    #env.render(action=best_act)
+
+print("Game over, final score:", env.score)

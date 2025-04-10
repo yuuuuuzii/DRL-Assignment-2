@@ -4,7 +4,7 @@ import math
 import numpy as np
 from collections import defaultdict
 import pickle
-from util import NTupleApproximator ,save_approximator
+from util import NTupleApproximator ,save_approximator, load_approximator
 from student_agent import Game2048Env
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -13,7 +13,7 @@ from tqdm import tqdm
 # TODO: Define transformation functions (rotation and reflection), i.e., rot90, rot180, ..., etc.
 # -------------------------------
 
-def td_learning(env,approximator, num_episodes=50000, alpha=0.01, gamma=0.99, epsilon=0.1):
+def td_learning(env,approximator, start_episode, num_episodes=50000, alpha=0.01, gamma=0.99, epsilon=0.1):
     """
     Trains the 2048 agent using TD-Learning.
 
@@ -29,7 +29,7 @@ def td_learning(env,approximator, num_episodes=50000, alpha=0.01, gamma=0.99, ep
     success_flags = []
     Avg_score = []
     step_array = []
-    for episode in tqdm(range(num_episodes)):
+    for episode in tqdm(range(start_episode, num_episodes)):
         state = env.reset()
         trajectory = []  # Store trajectory data if needed
         previous_score = 0
@@ -55,17 +55,19 @@ def td_learning(env,approximator, num_episodes=50000, alpha=0.01, gamma=0.99, ep
 
             current_state = copy.deepcopy(state)  
            
-            next_state, new_score, done, _ = env.step(best_action)
+            next_state, new_score, done, afterstate = env.step(best_action)
  
             incremental_reward = new_score - previous_score
             
             max_tile = max(max_tile, np.max(next_state))
       
-            trajectory.append((current_state, copy.deepcopy(next_state),incremental_reward))
+            trajectory.append((current_state, copy.deepcopy(afterstate), incremental_reward))
 
             previous_score = new_score
-            state = next_state
-        trajectory.append((copy.deepcopy(state), None, 0))
+            state = afterstate
+            
+        trajectory.append((copy.deepcopy(afterstate), None, 0))
+
         for (state, next_state, reward) in trajectory:
             if next_state is not None:
                 delta = reward + gamma * approximator.value(next_state) - approximator.value(state)
@@ -90,11 +92,12 @@ def td_learning(env,approximator, num_episodes=50000, alpha=0.01, gamma=0.99, ep
             print(f"✅ Checkpoint saved at episode {episode + 1}")
     return final_scores ,Avg_score, step_array
 
-patterns = [[(1, 0), (2, 0), (3, 0), (1, 1), (2, 1), (3, 1)], [(1, 1), (2, 1), (3, 1),(1, 2), (2, 2), (3, 2)],[(0, 0), (1, 0), (2, 0), (3, 0), (2, 1), (3, 1)], [(0, 1), (1, 1), (2, 1), (3, 1), (2, 2), (3, 2)],[(0, 2), (1, 2), (2, 2), (3, 2), (2, 3), (3, 3)]]
+patterns = [[(1, 0), (2, 0), (3, 0), (1, 1), (2, 1), (3, 1)], [(1, 1), (2, 1), (3, 1),(1, 2), (2, 2), (3, 2)],[(0, 0), (1, 0), (2, 0), (3, 0), (2, 1), (3, 1)], [(0, 1), (1, 1), (2, 1), (3, 1), (2, 2), (3, 2)],[(0, 2), (1, 2), (2, 2), (3, 2), (2, 3), (3, 3)],[(0, 0), (1, 0), (2, 0), (3, 0), (3, 1), (3, 2)]]
 
+start_episode = 0
 #approximator = load_approximator(f"checkpoint_ep{start_episode}.pkl")
 approximator = NTupleApproximator(board_size=4, patterns=patterns)
 
 env = Game2048Env()
 
-td_learning(env,approximator, num_episodes=80000, alpha=0.1, gamma=0.99, epsilon=0.1)
+td_learning(env,approximator, start_episode, num_episodes=80000, alpha=0.15, gamma=0.99, epsilon=0.1)
